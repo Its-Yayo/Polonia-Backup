@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - ot_net
+
+  plc_reader:
+    build: ./app
+    container_name: plc_reader
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - influxdb2
+    environment:
+      - PLC_IP=192.168.100.10
+      - PLC_RACK=0
+      - PLC_SLOT=1
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=1883
+      - READ_INTERVAL=1
+      - INFLUX_URL=http://influxdb2:8086
+      - INFLUX_TOKEN=OT-TOKEN-HERE
+      - INFLUX_ORG=OT
+      - INFLUX_BUCKET=Historian
+    networks:
+      - ot_net
+
+  influxdb2:
+    container_name: influxdb2
+    image: influxdb:2.7
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      - TZ=Etc/UTC
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=OT
+      - DOCKER_INFLUXDB_INIT_BUCKET=Historian
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=OT-TOKEN-HERE
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+    volumes:
+      - ./volumes/influxdb2/data:/var/lib/influxdb2
+      - ./volumes/influxdb2/config:/etc/influxdb2
+      - ./volumes/influxdb2/backup:/var/lib/backup
+    networks:
+      - ot_net
+  plc_simulator:
+    build: ./simulator
+    container_name: plc_simulator
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    environment:
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=plc/values
+      - READ_INTERVAL=1
+    networks:
+      - ot_net
+networks:
+  ot_net:
+    driver: bridge
