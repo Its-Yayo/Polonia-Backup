@@ -1,2 +1,3 @@
 # Polonia-Backup
-Repo universitario para backup de los ficheros de OT &lt;-> IT
+
+Backup de todo nuestro proyecto. Asi, tal cual, ya jalo team siuuuu
